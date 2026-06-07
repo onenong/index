@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Sillage · 잔향 — 당신의 첫 향 찾기</title>
+  <meta name="description" content="향수 입문자를 위한 감각 기반 향 취향 테스트. 10개의 질문으로 당신과 닮은 첫 향을 찾아드립니다." />
+  <meta property="og:title" content="Sillage · 잔향" />
+  <meta property="og:description" content="10개의 질문으로 당신과 닮은 첫 향을 찾아보세요." />
+  <meta property="og:type" content="website" />
+
+  <!-- Libraries (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+    html, body { margin: 0; padding: 0; }
+    body { background: #EDE4D3; }
+
+    .f-display { font-family: 'Cormorant Garamond', 'Nanum Myeongjo', serif; font-weight: 300; letter-spacing: 0.02em; }
+    .f-display-kr { font-family: 'Nanum Myeongjo', 'Cormorant Garamond', serif; font-weight: 400; }
+    .f-body { font-family: 'Noto Sans KR', sans-serif; font-weight: 300; }
+    .f-body-em { font-family: 'Noto Sans KR', sans-serif; font-weight: 500; }
+    .f-italic { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; }
+
+    .noise {
+      position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .vignette {
+      position: absolute; inset: 0; pointer-events: none; z-index: 1;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(42,29,22,0.12) 100%);
+    }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+    .anim-fadeUp { animation: fadeUp 0.9s cubic-bezier(0.2, 0.6, 0.2, 1) both; }
+    .anim-fadeIn { animation: fadeIn 1.2s ease-out both; }
+    .anim-slide { animation: slideIn 0.6s cubic-bezier(0.2, 0.6, 0.2, 1) both; }
+    .anim-breathe { animation: breathe 5s ease-in-out infinite; }
+
+    .delay-1 { animation-delay: 0.15s; }
+    .delay-2 { animation-delay: 0.3s; }
+    .delay-3 { animation-delay: 0.5s; }
+    .delay-4 { animation-delay: 0.7s; }
+    .delay-5 { animation-delay: 0.9s; }
+
+    .option-card {
+      transition: all 0.35s cubic-bezier(0.2, 0.6, 0.2, 1);
+      border: 1px solid rgba(42,29,22,0.14);
+      cursor: pointer;
+    }
+    .option-card:hover, .option-card:active {
+      border-color: #8B2635;
+      background: rgba(139,38,53,0.04);
+      transform: translateY(-2px);
+    }
+    .option-card:hover .opt-num, .option-card:active .opt-num { color: #8B2635; }
+
+    .btn-primary {
+      background: #2A1D16; color: #EDE4D3;
+      transition: all 0.3s ease;
+      border: 1px solid #2A1D16; cursor: pointer;
+    }
+    .btn-primary:hover, .btn-primary:active { background: #8B2635; border-color: #8B2635; }
+
+    .btn-ghost { cursor: pointer; }
+
+    .divider-ornament::before, .divider-ornament::after {
+      content: ''; flex: 1; height: 1px; background: rgba(42,29,22,0.25);
+    }
+    .divider-ornament::before { margin-right: 1rem; }
+    .divider-ornament::after { margin-left: 1rem; }
+
+    .progress-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: rgba(42,29,22,0.2);
+      transition: all 0.4s ease;
+    }
+    .progress-dot.active { background: #8B2635; width: 24px; border-radius: 3px; }
+    .progress-dot.done { background: rgba(139,38,53,0.4); }
+
+    /* loading state before React mounts */
+    #loading {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: #EDE4D3; z-index: 100;
+    }
+    #loading .mark { font-size: 2.5rem; color: #8B2635; animation: breathe 2.5s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <div id="loading"><div class="mark">❋</div></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    function FragranceFinder() {
+      const [stage, setStage] = useState('intro');
+      const [currentQ, setCurrentQ] = useState(0);
+      const [scores, setScores] = useState({ fresh: 0, floral: 0, woody: 0, gourmand: 0, oriental: 0 });
+
+      const questions = [
+        {
+          q: "샤워하고 나면, 어떤 향이 가장 기분 좋아요?",
+          caption: "매일 쓰는 향",
+          options: [
+            { label: "갓 짠 레몬·자몽 같은 상큼함", hint: "상쾌한 비누, 샤워코롱 느낌", scores: { fresh: 3 } },
+            { label: "은은한 꽃·파우더 향", hint: "부드럽고 깨끗한 꽃내음", scores: { floral: 3 } },
+            { label: "포근한 머스크·우디", hint: "살결에 스며드는 따뜻함", scores: { woody: 3 } },
+            { label: "달콤한 바닐라·코코넛", hint: "디저트처럼 포근한 향", scores: { gourmand: 3 } },
+          ]
+        },
+        {
+          q: "카페에 가면 가장 끌리는 메뉴는?",
+          caption: "끌리는 맛",
+          options: [
+            { label: "아이스 레몬티·자몽 에이드", hint: "상큼하고 시원한", scores: { fresh: 3 } },
+            { label: "얼그레이·자스민 꽃차", hint: "향긋한 꽃과 허브", scores: { floral: 3 } },
+            { label: "따뜻한 카페라떼·헤이즐넛", hint: "고소하고 부드러운", scores: { gourmand: 2, woody: 1 } },
+            { label: "다크초콜릿·시나몬 라떼", hint: "진하고 스파이시한", scores: { oriental: 3 } },
+          ]
+        },
+        {
+          q: "길 가다 '아, 이 냄새 좋다' 했던 순간은?",
+          caption: "좋았던 냄새",
+          options: [
+            { label: "비 온 뒤 풀냄새, 바닷바람", hint: "맑고 시원한 공기", scores: { fresh: 3 } },
+            { label: "꽃집 앞을 지날 때", hint: "한가득 피어난 생화", scores: { floral: 3 } },
+            { label: "나무 가구·오래된 책 냄새", hint: "차분하고 깊은", scores: { woody: 3 } },
+            { label: "빵집에서 갓 구운 빵 냄새", hint: "달고 따뜻한", scores: { gourmand: 3 } },
+          ]
+        },
+        {
+          q: "디저트 가게에서 가장 손이 가는 건?",
+          caption: "달콤한 취향",
+          options: [
+            { label: "레몬 셔벗·유자 젤리", hint: "새콤달콤 산뜻한", scores: { fresh: 3 } },
+            { label: "장미·라벤더 마카롱", hint: "꽃을 닮은 디저트", scores: { floral: 3 } },
+            { label: "티라미수·밤 몽블랑", hint: "고소하고 묵직한 단맛", scores: { gourmand: 2, woody: 1 } },
+            { label: "다크 가나슈·시나몬 롤", hint: "진하고 스파이시한", scores: { oriental: 2, gourmand: 1 } },
+          ]
+        },
+        {
+          q: "지금 훌쩍 떠난다면, 어디로?",
+          caption: "꿈꾸는 여행",
+          options: [
+            { label: "파란 바다, 해변 휴양지", hint: "햇살과 바람", scores: { fresh: 3 } },
+            { label: "꽃 만발한 봄 정원·온실", hint: "꽃향기 가득한", scores: { floral: 3 } },
+            { label: "단풍 든 숲속 산장", hint: "고요하고 깊은 자연", scores: { woody: 3 } },
+            { label: "이국적인 야시장·향신료 거리", hint: "낯설고 매혹적인", scores: { oriental: 3 } },
+          ]
+        },
+        {
+          q: "옷장에서 손이 자주 가는 스타일은?",
+          caption: "나의 분위기",
+          options: [
+            { label: "깨끗한 화이트·린넨", hint: "산뜻하고 단정한", scores: { fresh: 3 } },
+            { label: "사랑스러운 플로럴·파스텔", hint: "화사하고 부드러운", scores: { floral: 3 } },
+            { label: "차분한 베이지·니트·가죽", hint: "세련되고 안정적인", scores: { woody: 3 } },
+            { label: "시크한 올블랙·레더", hint: "강렬하고 도시적인", scores: { oriental: 3 } },
+          ]
+        },
+        {
+          q: "방에 두고 싶은 향초·디퓨저는?",
+          caption: "공간의 향",
+          options: [
+            { label: "코튼·아쿠아 (갓 마른 빨래)", hint: "깨끗하고 포근한", scores: { fresh: 3 } },
+            { label: "화이트 머스크·프리지아", hint: "은은한 꽃과 비누", scores: { floral: 2, woody: 1 } },
+            { label: "샌달우드·시더우드", hint: "차분한 나무 향", scores: { woody: 3 } },
+            { label: "바닐라·캐러멜·통카빈", hint: "달고 따뜻한", scores: { gourmand: 3 } },
+          ]
+        },
+        {
+          q: "향수, 얼마나 진하게 쓰고 싶어요?",
+          caption: "원하는 강도",
+          options: [
+            { label: "아주 가볍게, 나만 느낄 정도", hint: "있는 듯 없는 듯", scores: { fresh: 2, floral: 1 } },
+            { label: "적당히, 가까운 사람만 느끼게", hint: "포근한 거리감", scores: { floral: 2, gourmand: 1 } },
+            { label: "은근히 오래 남게", hint: "잔향이 길게", scores: { woody: 2, gourmand: 1 } },
+            { label: "확실하게, 멀리서도 느껴지게", hint: "존재감 있게", scores: { oriental: 3 } },
+          ]
+        },
+        {
+          q: "이런 향수는 좀 부담스러워요",
+          caption: "✕ 피하고 싶은 향",
+          note: "가장 피하고 싶은 하나만 골라주세요. 이 계열은 추천에서 빼드릴게요.",
+          negative: true,
+          options: [
+            { label: "너무 달아서 물리는 향", hint: "솜사탕처럼 머리 아픈", scores: { gourmand: -3, oriental: -1 } },
+            { label: "너무 진하고 무거운 향", hint: "공간을 꽉 채우는", scores: { oriental: -3 } },
+            { label: "비누처럼 밋밋하고 흔한 향", hint: "특징 없이 가벼운", scores: { fresh: -3 } },
+            { label: "올드하게 느껴지는 진한 꽃향", hint: "예전 화장품 같은", scores: { floral: -3 } },
+          ]
+        },
+        {
+          q: "마지막으로, 향수로 어떤 사람이고 싶어요?",
+          caption: "남기고 싶은 인상",
+          options: [
+            { label: "깨끗하고 산뜻한 사람", hint: "곁에 있으면 상쾌한", scores: { fresh: 3 } },
+            { label: "사랑스럽고 다정한 사람", hint: "포근하게 안기고 싶은", scores: { floral: 2, gourmand: 1 } },
+            { label: "차분하고 믿음직한 사람", hint: "단단한 존재감의", scores: { woody: 3 } },
+            { label: "잊히지 않는 강렬한 사람", hint: "돌아보게 만드는", scores: { oriental: 3 } },
+          ]
+        },
+      ];
+
+      const families = {
+        fresh: {
+          name: "프레쉬 시트러스", english: "Fresh Citrus", symbol: "◐",
+          description: "첫 모금의 레몬 에이드 같은, 투명하고 깨끗한 에너지. 과하지 않은 자연스러움이 매력인 사람.",
+          poetic: "당신에게선 한 발짝 먼저 봄이 온다.",
+          keywords: ["청량감", "자연스러움", "에너지"],
+          picks: [
+            { name: "Acqua di Parma Colonia", note: "이탈리아 클래식. 깔끔한 시트러스의 교과서." },
+            { name: "Jo Malone Lime Basil & Mandarin", note: "입문자에게 가장 많이 추천되는 라임." },
+            { name: "Dior Eau Sauvage", note: "시대를 타지 않는 베르가못 정석." },
+          ]
+        },
+        floral: {
+          name: "소프트 플로럴", english: "Soft Floral", symbol: "✿",
+          description: "향기로운 꽃잎이 바람에 흩날리는 오후. 섬세한 디테일에 먼저 반응하는 사람.",
+          poetic: "당신은 이미 가진 우아함을 증명할 필요가 없다.",
+          keywords: ["은은함", "로맨틱", "섬세함"],
+          picks: [
+            { name: "Chloé Eau de Parfum", note: "가볍지만 존재감 있는 장미 부케." },
+            { name: "Gucci Bloom", note: "화사한 흰 꽃의 풍성함." },
+            { name: "Diptyque Do Son", note: "튜베로즈의 시적인 해석." },
+          ]
+        },
+        woody: {
+          name: "웜 우디", english: "Warm Woody", symbol: "❋",
+          description: "오래된 책장의 결, 햇살이 든 나무 마루. 말보다 분위기로 사람을 매료시키는 타입.",
+          poetic: "당신은 시간이 묻은 아름다움을 알아본다.",
+          keywords: ["깊이감", "안정감", "차분함"],
+          picks: [
+            { name: "Le Labo Santal 33", note: "한 번 맡으면 잊히지 않는 샌달우드." },
+            { name: "Diptyque Tam Dao", note: "고요한 명상 같은 우드." },
+            { name: "Jo Malone Wood Sage & Sea Salt", note: "우디 입문자에게 좋은 가벼움." },
+          ]
+        },
+        gourmand: {
+          name: "스위트 구르망", english: "Sweet Gourmand", symbol: "◉",
+          description: "바닐라빈, 갓 구운 페이스트리, 캐러멜라이즈된 설탕. 사람을 편안하게 만드는 온기를 가진 사람.",
+          poetic: "당신 근처엔 항상 따뜻한 공기가 돈다.",
+          keywords: ["포근함", "달콤함", "친근함"],
+          picks: [
+            { name: "Maison Margiela By the Fireplace", note: "장작불과 마시멜로의 따스함." },
+            { name: "Kayali Vanilla 28", note: "입기 쉬운 바닐라의 정석." },
+            { name: "YSL Black Opium", note: "커피와 바닐라의 중독적 조합." },
+          ]
+        },
+        oriental: {
+          name: "센슈얼 오리엔탈", english: "Sensual Oriental", symbol: "❖",
+          description: "실크 드레스, 촛불, 향신료 가득한 시장. 강한 인상을 남기는 것을 두려워하지 않는 사람.",
+          poetic: "당신은 자신만의 주파수로 산다.",
+          keywords: ["존재감", "관능미", "깊이"],
+          picks: [
+            { name: "Tom Ford Tobacco Vanille", note: "압도적인 럭셔리의 아이콘." },
+            { name: "YSL Libre", note: "현대적으로 재해석된 오리엔탈." },
+            { name: "Guerlain Shalimar", note: "향수 역사에 남은 전설적 앰버." },
+          ]
+        }
+      };
+
+      const handleAnswer = (optionScores) => {
+        const newScores = { ...scores };
+        Object.entries(optionScores).forEach(([key, val]) => {
+          newScores[key] = (newScores[key] || 0) + val;
+        });
+        setScores(newScores);
+        if (currentQ < questions.length - 1) {
+          setTimeout(() => setCurrentQ(currentQ + 1), 150);
+        } else {
+          setTimeout(() => setStage('result'), 150);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      const getResult = () => {
+        const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+        return families[sorted[0][0]];
+      };
+
+      const restart = () => {
+        setScores({ fresh: 0, floral: 0, woody: 0, gourmand: 0, oriental: 0 });
+        setCurrentQ(0);
+        setStage('intro');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      const shareResult = () => {
+        const result = getResult();
+        const text = "나의 첫 향은 '" + result.name + "' ✨ Sillage에서 향 취향 찾기";
+        if (navigator.share) {
+          navigator.share({ title: 'Sillage · 잔향', text: text, url: location.href }).catch(() => {});
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(location.href);
+          alert('링크가 복사됐어요! 친구에게 붙여넣기 해보세요.');
+        } else {
+          alert('이 페이지 주소를 복사해 친구에게 공유해보세요!');
+        }
+      };
+
+      return (
+        <React.Fragment>
+          <div className="noise"></div>
+          <div className="min-h-screen relative overflow-hidden" style={{ background: '#EDE4D3', color: '#2A1D16' }}>
+            <div className="vignette"></div>
+
+            {/* INTRO */}
+            {stage === 'intro' && (
+              <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-16 text-center">
+                <div className="anim-fadeIn" style={{ position: 'absolute', top: '2rem', left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
+                  <div className="f-body text-xs tracking-[0.4em] uppercase" style={{ color: 'rgba(42,29,22,0.5)' }}>
+                    Est. 2026 · Seoul
+                  </div>
+                </div>
+
+                <div className="anim-fadeUp anim-breathe mb-8" style={{ fontSize: '2.5rem', color: '#8B2635' }}>❋</div>
+
+                <div className="anim-fadeUp delay-1 f-body text-xs tracking-[0.5em] uppercase mb-6" style={{ color: 'rgba(42,29,22,0.6)' }}>
+                  A Fragrance Discovery
+                </div>
+
+                <h1 className="anim-fadeUp delay-2 f-display mb-2" style={{ fontSize: 'clamp(4rem, 18vw, 7rem)', lineHeight: 0.95, fontWeight: 300 }}>
+                  Sillage
+                </h1>
+
+                <div className="anim-fadeUp delay-3 f-italic text-xl mb-10" style={{ color: 'rgba(42,29,22,0.6)' }}>잔향</div>
+
+                <div className="anim-fadeUp delay-4 f-display-kr text-lg mb-3 max-w-sm" style={{ lineHeight: 1.7 }}>
+                  열 개의 질문으로<br/>
+                  당신과 닮은 첫 향을 찾습니다
+                </div>
+
+                <div className="anim-fadeUp delay-4 f-body text-sm max-w-xs mb-12" style={{ color: 'rgba(42,29,22,0.55)', lineHeight: 1.7 }}>
+                  입문자를 위한 감각 기반 향 가이드.<br/>
+                  어려운 향 용어 없이, 당신의 취향부터.
+                </div>
+
+                <button onClick={() => setStage('quiz')} className="anim-fadeUp delay-5 btn-primary f-body-em px-12 py-4 text-sm tracking-[0.25em] uppercase" style={{ borderRadius: '2px' }}>
+                  시작하기
+                </button>
+
+                <div className="anim-fadeUp delay-5 f-body text-xs mt-6 tracking-widest" style={{ color: 'rgba(42,29,22,0.4)' }}>
+                  · 약 2분 소요 ·
+                </div>
+
+                <div className="anim-fadeIn delay-5" style={{ position: 'absolute', bottom: '2rem', left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
+                  <div className="f-italic text-xs" style={{ color: 'rgba(42,29,22,0.4)' }}>
+                    "A scent is a memory with no name."
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* QUIZ */}
+            {stage === 'quiz' && (
+              <div className="relative z-10 min-h-screen flex flex-col px-6 py-10">
+                <div className="flex justify-between items-center mb-12">
+                  <div className="f-display text-xl" style={{ color: '#8B2635' }}>Sillage</div>
+                  <div className="f-body text-xs tracking-widest" style={{ color: 'rgba(42,29,22,0.5)' }}>
+                    {String(currentQ + 1).padStart(2, '0')} / {String(questions.length).padStart(2, '0')}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 mb-14">
+                  {questions.map((_, i) => (
+                    <div key={i} className={"progress-dot " + (i === currentQ ? 'active' : i < currentQ ? 'done' : '')} />
+                  ))}
+                </div>
+
+                <div key={currentQ} className="flex-1 flex flex-col max-w-xl mx-auto w-full">
+                  <div className="anim-slide f-body text-xs tracking-[0.35em] uppercase mb-4" style={{ color: questions[currentQ].negative ? '#8B2635' : 'rgba(139,38,53,0.7)', fontWeight: questions[currentQ].negative ? 700 : 300 }}>
+                    {questions[currentQ].caption}
+                  </div>
+
+                  <h2 className="anim-slide delay-1 f-display-kr mb-4" style={{ fontSize: 'clamp(1.75rem, 6vw, 2.4rem)', lineHeight: 1.35 }}>
+                    {questions[currentQ].q}
+                  </h2>
+
+                  {questions[currentQ].note && (
+                    <div className="anim-slide delay-1 f-body text-sm mb-8 px-4 py-3" style={{ color: 'rgba(42,29,22,0.7)', lineHeight: 1.6, background: 'rgba(139,38,53,0.07)', borderRadius: '2px', borderLeft: '2px solid #8B2635' }}>
+                      {questions[currentQ].note}
+                    </div>
+                  )}
+
+                  <div className={questions[currentQ].note ? 'space-y-3' : 'space-y-3 mt-6'}>
+                    {questions[currentQ].options.map((opt, i) => (
+                      <button key={i} onClick={() => handleAnswer(opt.scores)} className="option-card anim-slide w-full text-left p-5 flex items-start gap-4" style={{ animationDelay: (0.15 + i * 0.08) + 's', borderRadius: '2px', background: 'rgba(255,253,248,0.4)' }}>
+                        <div className="opt-num f-display text-2xl leading-none mt-1 transition-colors" style={{ color: 'rgba(42,29,22,0.35)', minWidth: '1.5rem' }}>
+                          {String.fromCharCode(65 + i)}
+                        </div>
+                        <div className="flex-1">
+                          <div className="f-body-em text-base mb-1" style={{ color: '#2A1D16' }}>{opt.label}</div>
+                          <div className="f-italic text-sm" style={{ color: 'rgba(42,29,22,0.55)' }}>{opt.hint}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* RESULT */}
+            {stage === 'result' && (() => {
+              const result = getResult();
+              return (
+                <div className="relative z-10 min-h-screen px-6 py-10 pb-16">
+                  <div className="max-w-xl mx-auto">
+                    <div className="anim-fadeUp text-center mb-10">
+                      <div className="f-body text-xs tracking-[0.4em] uppercase mb-4" style={{ color: 'rgba(42,29,22,0.5)' }}>Your Sillage</div>
+                      <div className="f-display text-6xl mb-6 anim-breathe" style={{ color: '#8B2635' }}>{result.symbol}</div>
+                      <div className="f-italic text-lg mb-1" style={{ color: 'rgba(42,29,22,0.6)' }}>{result.english}</div>
+                      <h1 className="f-display-kr" style={{ fontSize: 'clamp(2.2rem, 8vw, 3rem)', lineHeight: 1.1, fontWeight: 700 }}>{result.name}</h1>
+                    </div>
+
+                    <div className="anim-fadeUp delay-1 flex items-center mb-10 divider-ornament">
+                      <div className="f-display text-sm" style={{ color: 'rgba(139,38,53,0.6)' }}>✶</div>
+                    </div>
+
+                    <div className="anim-fadeUp delay-1 f-italic text-center mb-8 px-4" style={{ fontSize: '1.35rem', lineHeight: 1.5, color: '#8B2635' }}>
+                      "{result.poetic}"
+                    </div>
+
+                    <p className="anim-fadeUp delay-2 f-body-em text-center mb-10 px-2" style={{ lineHeight: 1.9, color: 'rgba(42,29,22,0.85)' }}>
+                      {result.description}
+                    </p>
+
+                    <div className="anim-fadeUp delay-2 flex justify-center gap-3 mb-14 flex-wrap">
+                      {result.keywords.map((k, i) => (
+                        <div key={i} className="f-body text-xs tracking-widest px-4 py-2 uppercase" style={{ border: '1px solid rgba(42,29,22,0.25)', color: 'rgba(42,29,22,0.7)', borderRadius: '2px' }}>{k}</div>
+                      ))}
+                    </div>
+
+                    <div className="anim-fadeUp delay-3 mb-10">
+                      <div className="f-body text-xs tracking-[0.4em] uppercase mb-6 text-center" style={{ color: 'rgba(42,29,22,0.5)' }}>
+                        Recommended · 입문 추천 3선
+                      </div>
+                      <div className="space-y-5">
+                        {result.picks.map((pick, i) => (
+                          <div key={i} className="anim-fadeUp flex items-start gap-5 p-5" style={{ animationDelay: (0.5 + i * 0.15) + 's', background: 'rgba(255,253,248,0.5)', borderLeft: '2px solid #8B2635', borderRadius: '0 2px 2px 0' }}>
+                            <div className="f-display text-3xl leading-none" style={{ color: 'rgba(139,38,53,0.5)' }}>{String(i + 1).padStart(2, '0')}</div>
+                            <div className="flex-1">
+                              <div className="f-display text-lg mb-1.5" style={{ fontWeight: 500, letterSpacing: '0.01em' }}>{pick.name}</div>
+                              <div className="f-body text-sm" style={{ color: 'rgba(42,29,22,0.65)', lineHeight: 1.6 }}>{pick.note}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="anim-fadeUp delay-4 mb-10 p-5 text-center" style={{ background: 'rgba(139,38,53,0.06)', borderRadius: '2px' }}>
+                      <div className="f-body-em text-sm mb-2" style={{ color: '#8B2635' }}>✱ 입문자 팁</div>
+                      <div className="f-body text-sm" style={{ lineHeight: 1.75, color: 'rgba(42,29,22,0.75)' }}>
+                        풀 사이즈를 사기 전에, 먼저 <span className="f-body-em" style={{ color: '#2A1D16' }}>시향 샘플(2~5ml)</span>을 구해 며칠 착용해보세요. 향수는 체온에 따라 달라져요.
+                      </div>
+                    </div>
+
+                    <div className="anim-fadeUp delay-4 flex flex-col gap-3">
+                      <button onClick={restart} className="btn-primary f-body-em py-4 text-sm tracking-[0.25em] uppercase" style={{ borderRadius: '2px' }}>
+                        다시 테스트하기
+                      </button>
+                      <button onClick={shareResult} className="btn-ghost f-body-em py-4 text-sm tracking-[0.25em] uppercase" style={{ borderRadius: '2px', border: '1px solid rgba(42,29,22,0.3)', color: '#2A1D16', background: 'transparent' }}>
+                        결과 공유하기
+                      </button>
+                    </div>
+
+                    <div className="f-italic text-center mt-10 text-sm" style={{ color: 'rgba(42,29,22,0.45)' }}>
+                      — Sillage, 당신의 첫 향 —
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) loadingEl.remove();
+    ReactDOM.createRoot(document.getElementById('root')).render(<FragranceFinder />);
+  </script>
+</body>
+</html>
